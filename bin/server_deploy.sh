@@ -42,7 +42,6 @@ FILES="job-server-extras/target/scala-$majorVersion/spark-job-server.jar
        bin/server_start.sh
        bin/server_stop.sh
        bin/kill-process-tree.sh
-       $CONFIG_DIR/$ENV.conf
 	   config/shiro.ini
        config/log4j-server.properties"
 
@@ -55,6 +54,7 @@ for host in $DEPLOY_HOSTS; do
   # We assume that the deploy user is APP_USER and has permissions
   ssh $ssh_key_to_use  ${APP_USER}@$host mkdir -p $INSTALL_DIR
   scp $ssh_key_to_use  $FILES ${APP_USER}@$host:$INSTALL_DIR/
-  scp $ssh_key_to_use  $configFile ${APP_USER}@$host:$INSTALL_DIR/settings.sh
-  ssh $ssh_key_to_use  ${APP_USER}@$host (cd $INSTALL_DIR; ./server_start.sh)
+  scp $ssh_key_to_use  "$CONFIG_DIR/$ENV.conf" ${APP_USER}@$host:$INSTALL_DIR/
+  scp $ssh_key_to_use  "$configFile" ${APP_USER}@$host:$INSTALL_DIR/settings.sh
+  ssh $ssh_key_to_use  ${APP_USER}@$host "(cd job-server; nohup ./server_start.sh < /dev/null &> /dev/null &)"
 done
