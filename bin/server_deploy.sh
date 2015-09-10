@@ -18,7 +18,7 @@ if [ ! -f "$configFile" ]; then
   echo "Could not find $configFile"
   exit 1
 fi
-. $configFile
+. "$configFile"
 
 majorRegex='([0-9]+\.[0-9]+)\.[0-9]+'
 if [[ $SCALA_VERSION =~ $majorRegex ]]
