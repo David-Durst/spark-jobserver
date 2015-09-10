@@ -56,4 +56,5 @@ for host in $DEPLOY_HOSTS; do
   ssh $ssh_key_to_use  ${APP_USER}@$host mkdir -p $INSTALL_DIR
   scp $ssh_key_to_use  $FILES ${APP_USER}@$host:$INSTALL_DIR/
   scp $ssh_key_to_use  $configFile ${APP_USER}@$host:$INSTALL_DIR/settings.sh
+  ssh $ssh_key_to_use  ${APP_USER}@$host (cd $INSTALL_DIR; ./server_start.sh)
 done
