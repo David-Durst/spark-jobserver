@@ -26,14 +26,16 @@ object Dependencies {
     yammerDeps
   ) ++ yodaDeps
 
-  val sparkVersion = sys.env.getOrElse("SPARK_VERSION", "1.3.1")
+  val sparkVersion = sys.env.getOrElse("SPARK_VERSION", "1.5.0")
   lazy val sparkDeps = Seq(
     "org.apache.spark" %% "spark-core" % sparkVersion % "provided" excludeAll(excludeNettyIo, excludeQQ),
     // Force netty version.  This avoids some Spark netty dependency problem.
-    "io.netty" % "netty-all" % "4.0.23.Final"
+    "io.netty" % "netty-all" % "4.0.23.Final",
+    "org.scala-lang" % "scala-library" % "2.10.3"
   )
 
   lazy val sparkExtraDeps = Seq(
+    "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided" excludeAll(excludeNettyIo, excludeQQ),
     "org.apache.spark" %% "spark-sql" % sparkVersion % "provided" excludeAll(excludeNettyIo, excludeQQ),
     "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided" excludeAll(excludeNettyIo, excludeQQ),
     "org.apache.spark" %% "spark-hive" % sparkVersion % "provided" excludeAll(excludeNettyIo, excludeQQ)

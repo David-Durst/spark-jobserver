@@ -11,6 +11,7 @@ import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import spark.jobserver.util.SparkJobUtils
 import spark.jobserver.util.SSLContextFactory
+import spray.http.HttpHeaders.RawHeader
 import scala.concurrent.{Await, ExecutionContext}
 import scala.util.Try
 import spark.jobserver.io.JobInfo
@@ -33,7 +34,7 @@ class WebApi(system: ActorSystem,
              jarManager: ActorRef,
              supervisor: ActorRef,
              jobInfo: ActorRef)
-    extends HttpService with CommonRoutes with SJSAuthenticator {
+    extends HttpService with CommonRoutes with SJSAuthenticator with CORSSupport {
   import CommonMessages._
   import ContextSupervisor._
   import scala.concurrent.duration._
@@ -54,7 +55,9 @@ class WebApi(system: ActorSystem,
 
   val logger = LoggerFactory.getLogger(getClass)
 
-  val myRoutes = jarRoutes ~ contextRoutes ~ jobRoutes ~ healthzRoutes ~ otherRoutes
+  val myRoutes = cors {
+    jarRoutes ~ contextRoutes ~ jobRoutes ~ healthzRoutes ~ otherRoutes
+  }
 
   lazy val authenticator: AuthMagnet[AuthInfo] = {
     if (config.getBoolean("shiro.authentication")) {
