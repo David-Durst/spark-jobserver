@@ -6,9 +6,11 @@
 SSH_KEY=/home/david/.ssh/id_rsa
 KEY_PAIR=ddurstLaptop
 
-#get spark binaries
-wget -P "$bin"/.. http://apache.arvixe.com/spark/spark-1.5.0/spark-1.5.0-bin-hadoop2.6.tgz
-tar -xvzf "$bin"/../spark-1.5.0-bin-hadoop2.6.tgz -C "$bin"/..
+#get spark binaries if they haven't been downloaded and extracted yet
+if [ ! -d "$bin"/../spark-1.5.0-bin-hadoop2.6 ]; then
+    wget -P "$bin"/.. http://apache.arvixe.com/spark/spark-1.5.0/spark-1.5.0-bin-hadoop2.6.tgz
+    tar -xvzf "$bin"/../spark-1.5.0-bin-hadoop2.6.tgz -C "$bin"/..
+fi
 
 #run spark-ec2 to start ec2 cluster
 CLUSTER_NAME=medium1Slave
