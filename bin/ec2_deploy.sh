@@ -30,3 +30,5 @@ sed -i -E "s/master = .*/master = \"spark:\/\/$DEPLOY_HOSTS:7077\"/g" "$bin"/../
 aws ec2 authorize-security-group-ingress --group-name $CLUSTER_NAME-master --protocol tcp --port 8090 --cidr 0.0.0.0/0
 
 . server_deploy.sh ec2
+
+echo "The Job Server is listening at $DEPLOY_HOSTS"
