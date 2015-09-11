@@ -27,5 +27,5 @@ aws ec2 authorize-security-group-ingress --group-name $CLUSTER_NAME-master --pro
 
 cd "$bin"/..
 bin/server_deploy.sh ec2
-
+ssh -i "$SSH_KEY"  root@$DEPLOY_HOSTS "(cd job-server; nohup ./server_start.sh < /dev/null &> /dev/null &)"
 echo "The Job Server is listening at $DEPLOY_HOSTS:8090"
