@@ -52,9 +52,9 @@ fi
 
 for host in $DEPLOY_HOSTS; do
   # We assume that the deploy user is APP_USER and has permissions
-  ssh $ssh_key_to_use  ${APP_USER}@$host mkdir -p $INSTALL_DIR
-  scp $ssh_key_to_use  $FILES ${APP_USER}@$host:$INSTALL_DIR/
-  scp $ssh_key_to_use  "$CONFIG_DIR/$ENV.conf" ${APP_USER}@$host:$INSTALL_DIR/
-  scp $ssh_key_to_use  "$configFile" ${APP_USER}@$host:$INSTALL_DIR/settings.sh
+  ssh -o StrictHostKeyChecking=no $ssh_key_to_use  ${APP_USER}@$host mkdir -p $INSTALL_DIR
+  scp -o StrictHostKeyChecking=no $ssh_key_to_use  $FILES ${APP_USER}@$host:$INSTALL_DIR/
+  scp -o StrictHostKeyChecking=no $ssh_key_to_use  "$CONFIG_DIR/$ENV.conf" ${APP_USER}@$host:$INSTALL_DIR/
+  scp -o StrictHostKeyChecking=no $ssh_key_to_use  "$configFile" ${APP_USER}@$host:$INSTALL_DIR/settings.sh
 done
 
