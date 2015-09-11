@@ -1,11 +1,8 @@
 #!/bin/bash
-#MUST CUSTOMIZE THESE TO RUN
-# SSH Key to login to server that hosts Spark master node and Job Server
-SSH_KEY=/home/david/.ssh/id_rsa
-KEY_PAIR=ddurstLaptop
-
 bin=`dirname "${BASH_SOURCE-$0}"`
 bin=`cd "$bin"; pwd`
+
+. "$bin"/../config/user-ec2-settings.sh
 
 #get spark binaries if they haven't been downloaded and extracted yet
 if [ ! -d "$bin"/../spark-1.5.0-bin-hadoop2.6 ]; then
@@ -14,7 +11,6 @@ if [ ! -d "$bin"/../spark-1.5.0-bin-hadoop2.6 ]; then
 fi
 
 #run spark-ec2 to start ec2 cluster
-CLUSTER_NAME=medium1Slave
 EC2DEPLOY="$bin"/../spark-1.5.0-bin-hadoop2.6/ec2/spark-ec2
 "$EC2DEPLOY" --key-pair=$KEY_PAIR --identity-file=$SSH_KEY --region=us-east-1 --zone=us-east-1a --instance-type=m3.medium --slaves 1 launch $CLUSTER_NAME
 #There is only 1 deploy host. However, the variable is plural as that is how Spark Job Server named it.
@@ -29,6 +25,7 @@ sed -i -E "s/master = .*/master = \"spark:\/\/$DEPLOY_HOSTS:7077\"/g" "$bin"/../
 #open the port on the master for Spark Job Server to work
 aws ec2 authorize-security-group-ingress --group-name $CLUSTER_NAME-master --protocol tcp --port 8090 --cidr 0.0.0.0/0
 
-. server_deploy.sh ec2
+cd "$bin"/..
+bin/server_deploy.sh ec2
 
-echo "The Job Server is listening at $DEPLOY_HOSTS"
+echo "The Job Server is listening at $DEPLOY_HOSTS:8090"

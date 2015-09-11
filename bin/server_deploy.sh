@@ -37,7 +37,7 @@ if [ "$?" != "0" ]; then
   echo "Assembly failed"
   exit 1
 fi
-
+echo $bin
 FILES="job-server-extras/target/scala-$majorVersion/spark-job-server.jar
        bin/server_start.sh
        bin/server_stop.sh
