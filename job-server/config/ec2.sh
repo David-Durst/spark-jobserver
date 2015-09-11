@@ -1,5 +1,9 @@
 # Environment and deploy file
 # For use with bin/server_deploy, bin/server_package etc.
+#only look for this file if on local computer, not deployment server, as it won't be there and isn't needed
+if [ -a "$bin"/../config/user-ec2-settings.sh ]; then
+    . "$bin"/../config/user-ec2-settings.sh
+fi
 APP_USER=root
 APP_GROUP=root
 INSTALL_DIR=/root/job-server
