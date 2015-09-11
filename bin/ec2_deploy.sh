@@ -20,6 +20,7 @@ export DEPLOY_HOSTS=$("$EC2DEPLOY" get-master $CLUSTER_NAME | tail -n1)
 #This line is a hack to edit the ec2.conf file so that the master option is correct. Since we are allowing Amazon to
 #dynamically allocate a url for the master node, we must update the configuration file in between cluster startup
 #and Job Server deployment
+cp "$bin"/../config/ec2.conf.template "$bin"/../config/ec2.conf
 sed -i -E "s/master = .*/master = \"spark:\/\/$DEPLOY_HOSTS:7077\"/g" "$bin"/../config/ec2.conf
 
 #open the port on the master for Spark Job Server to work
