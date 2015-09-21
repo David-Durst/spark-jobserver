@@ -12,7 +12,7 @@ fi
 
 #run spark-ec2 to start ec2 cluster
 EC2DEPLOY="$bin"/../spark-1.5.0-bin-hadoop2.6/ec2/spark-ec2
-"$EC2DEPLOY" --copy-aws-credentials --key-pair=$KEY_PAIR --hadoop-major-version=yarn --identity-file=$SSH_KEY --region=us-east-1 --zone=us-east-1a --instance-type=$INSTANCE_TYPE --slaves $NUM_SLAVES launch $CLUSTER_NAME
+#"$EC2DEPLOY" --copy-aws-credentials --key-pair=$KEY_PAIR --hadoop-major-version=yarn --identity-file=$SSH_KEY --region=us-east-1 --zone=us-east-1a --instance-type=$INSTANCE_TYPE --slaves $NUM_SLAVES launch $CLUSTER_NAME
 #There is only 1 deploy host. However, the variable is plural as that is how Spark Job Server named it.
 #To minimize changes, I left the variable name alone.
 export DEPLOY_HOSTS=$("$EC2DEPLOY" get-master $CLUSTER_NAME | tail -n1)
@@ -22,6 +22,10 @@ export DEPLOY_HOSTS=$("$EC2DEPLOY" get-master $CLUSTER_NAME | tail -n1)
 #and Job Server deployment
 cp "$bin"/../config/ec2.conf.template "$bin"/../config/ec2.conf
 sed -i -E "s/master = .*/master = \"spark:\/\/$DEPLOY_HOSTS:7077\"/g" "$bin"/../config/ec2.conf
+
+#also get ec2_example_run.sh right
+cp "$bin"/ec2_example_run.sh.template "$bin"/ec2_example_run.sh
+sed -i -E "s/DEPLOY_HOSTS=.*/DEPLOY_HOSTS=$DEPLOY_HOSTS:8090\"/g" "$bin"/ec2_example_run.sh
 
 #open all ports so the master for Spark Job Server to work and you can see the results of your jobs
 aws ec2 authorize-security-group-ingress --group-name $CLUSTER_NAME-master --protocol tcp --port 0-65535 --cidr 0.0.0.0/0

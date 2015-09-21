@@ -1,0 +1,7 @@
+DEPLOY_HOSTS=ENTER_DEPLOY_HOST_HERE
+bin=`dirname "${BASH_SOURCE-$0}"`
+bin=`cd "$bin"; pwd`
+
+wget -O- --post-file job-server-extras/target/scala-2.10/job-server-extras_2.10-0.5.3-SNAPSHOT.jar "$DEPLOY_HOSTS/jars/km"
+wget -O- --post-data "" "$DEPLOY_HOSTS/contexts/kmsc?num-cpu-cores=38&memory-per-node=13g"
+wget -O- --post-data "" "$DEPLOY_HOSTS/jobs?appName=km&classPath=spark.jobserver.KMeansExample&context=kmsc"
