@@ -23,8 +23,8 @@ export DEPLOY_HOSTS=$("$EC2DEPLOY" get-master $CLUSTER_NAME | tail -n1)
 cp "$bin"/../config/ec2.conf.template "$bin"/../config/ec2.conf
 sed -i -E "s/master = .*/master = \"spark:\/\/$DEPLOY_HOSTS:7077\"/g" "$bin"/../config/ec2.conf
 
-#also get ec2_example_run.sh right
-cp "$bin"/ec2_example_run.sh.template "$bin"/ec2_example_run.sh
+#also get ec2_example.sh right
+cp "$bin"/ec2_example.sh.template "$bin"/ec2_example.sh
 sed -i -E "s/DEPLOY_HOSTS=.*/DEPLOY_HOSTS=\"$DEPLOY_HOSTS:8090\"/g" "$bin"/ec2_example_run.sh
 
 #open all ports so the master for Spark Job Server to work and you can see the results of your jobs
