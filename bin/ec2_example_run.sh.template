@@ -9,5 +9,5 @@ if [ -n "$SSH_KEY" ]  ; then
   ssh_key_to_use="-i $SSH_KEY"
 fi
 
-wget -O- --post-file "$bin"/../job-server-extras/target/scala-2.10/job-server-extras_2.10-0.5.3-SNAPSHOT.jar "$DEPLOY_HOSTS/jars/km"
-scp -rp -o StrictHostKeyChecking=no $ssh_key_to_use "$bin"/../ob-server-extras/main/KMeansExample?* ${APP_USER}@"$DEPLOY_HOSTS:/var/www/html/"
+wget -O- --post-file "$bin"/../job-server-extras/target/scala-2.10/job-server-extras_2.10-0.5.3-SNAPSHOT.jar "$DEPLOY_HOSTS:8090/jars/km"
+scp -rp -o StrictHostKeyChecking=no $ssh_key_to_use "$bin"/../job-server-extras/src/main/KMeansExample/* ${APP_USER}@"${DEPLOY_HOSTS%:*}:/var/www/html/"

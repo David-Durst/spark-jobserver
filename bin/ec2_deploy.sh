@@ -25,7 +25,7 @@ sed -i -E "s/master = .*/master = \"spark:\/\/$DEPLOY_HOSTS:7077\"/g" "$bin"/../
 
 #also get ec2_example_run.sh right
 cp "$bin"/ec2_example_run.sh.template "$bin"/ec2_example_run.sh
-sed -i -E "s/DEPLOY_HOSTS=.*/DEPLOY_HOSTS=$DEPLOY_HOSTS:8090\"/g" "$bin"/ec2_example_run.sh
+sed -i -E "s/DEPLOY_HOSTS=.*/DEPLOY_HOSTS=\"$DEPLOY_HOSTS:8090\"/g" "$bin"/ec2_example_run.sh
 
 #open all ports so the master for Spark Job Server to work and you can see the results of your jobs
 aws ec2 authorize-security-group-ingress --group-name $CLUSTER_NAME-master --protocol tcp --port 0-65535 --cidr 0.0.0.0/0
