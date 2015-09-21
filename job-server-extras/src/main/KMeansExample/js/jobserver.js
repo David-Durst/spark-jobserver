@@ -1,32 +1,33 @@
-var dataURL = "http://ec2-54-237-78-154.compute-1.amazonaws.com:8090/jobs/e853d3ad-47cf-4252-8e97-9bb0b6c7c47c";
-var jobURL;
+var jobserverURL = window.location.href.replace(/:5080.*/, ":8090");
 var cluster_labels;
 var cluster_points;
+var pageGraphicsDrawnYet = false;
 
-function reloadPageGraphics() {
-	d3.json(dataURL, function(labelsAndData) {
-		cluster_labels = labelsAndData.result[0];
-		cluster_points = labelsAndData.result[1].map(JSON.parse);
-		//build option list that will be converted to dropdwon
-		for (var i = 0; i < cluster_labels.length; i++) {
-			$('<option>', {
-				value: cluster_labels[i]
-			}).text(cluster_labels[i]).appendTo("#multiSelect")
-		}
-		//enable multiSelect dropdown
-		$('#multiSelect').multiselect({
-			enableFiltering: true,
-			includeSelectAllOption: true,
-			selectedClass: 'multiselect-selected',
-		});
-		//on click, update url
-		$('input[type="checkbox"]').click(function() {
-			window.history.pushState({}, "",URI(window.location.href).setQuery({active: getActiveLabels()}).toString())
-		});
-		//select those which are in URL
-		$('#multiSelect').multiselect('select', URI(window.location.href).query(true)['active']);
-		drawData();
-	});
+function reloadPageGraphics(labelsAndData) {
+	cluster_labels = labelsAndData[0];
+	cluster_points = labelsAndData[1].map(JSON.parse);
+	if (!pageGraphicsDrawnYet) {
+		//build option list that will be converted to dropdown
+       	for (var i = 0; i < cluster_labels.length; i++) {
+        	$('<option>', {
+        		value: cluster_labels[i]
+        		}).text(cluster_labels[i]).appendTo("#multiSelect");
+        }
+        //enable multiSelect dropdown
+        $('#multiSelect').multiselect({
+        	enableFiltering: true,
+        	includeSelectAllOption: true,
+        	selectedClass: 'multiselect-selected',
+        });
+        //on click, update url
+        $('input[type="checkbox"]').click(function() {
+        	window.history.pushState({}, "",URI(window.location.href).setQuery({active: getActiveLabels()}).toString())
+        });
+        //select those which are in URL
+       	$('#multiSelect').multiselect('select', URI(window.location.href).query(true)['active']);
+	}
+	pageGraphicsDrawnYet = true;
+	drawData();
 }
 
 function getActiveLabels() {
@@ -40,7 +41,7 @@ function getActiveLabels() {
 function startContext() 
 {	$("#state")[0].innerText = "Waiting for context to start.";
 	disableAll();
-	d3.json(jobserverURL + "/contexts/kmsc?spark.executor.instances=155", function(error, success) {
+	d3.json(jobserverURL + "/contexts/kmsc?num-cpu-cores=38&memory-per-node=13g", function(error, success) {
 			haveContext = true
 			$("#state")[0].innerText = "Ready to resample.";
 			showContextRunning();
@@ -61,19 +62,19 @@ function stopContext() {
 function runSampling() {
 	$("#state")[0].innerText = "Resampling, please wait.";
 	disableAll();
-	d3.json(dataURL + "/jobs?appName=km&classPath=spark.jobserver.KMeansExample&context=kmsc", function(error, success) {
+	d3.json(jobserverURL + "/jobs?appName=km&classPath=spark.jobserver.KMeansExample&context=kmsc", function(error, success) {
 			var jobId = success.result.jobId;
 
 			function getResult() {
 				setTimeout(function() {
-					d3.json(dataURL + "/jobs/" + jobId, function(error, success) {
+					d3.json(jobserverURL + "/jobs/" + jobId, function(error, success) {
 						if (success.status === "RUNNING") {
 							getResult();
 						} else {
-							reloadData();
+							reloadPageGraphics(success.result);
 						}
 					})
-				}, 1000)
+				}, 5000)
 			}
 			getResult()
 		})
@@ -99,7 +100,7 @@ function disableAll() {
 
 function isContextRunning() {
 	$("#state")[0].innerText = "Syncing with server.";
-	d3.json(dataURL + "/contexts", function(error, success) {
+	d3.json(jobserverURL + "/contexts", function(error, success) {
 		if ($.inArray("kmsc", success) !== -1) {
 			haveContext = true;
 			showContextRunning();
@@ -113,7 +114,4 @@ function isContextRunning() {
 }
 
 var haveContext = false;
-function startPage() {
-	isContextRunning();
-	reloadPageGraphics();
-}
+isContextRunning();

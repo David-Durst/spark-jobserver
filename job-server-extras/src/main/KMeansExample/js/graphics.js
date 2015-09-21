@@ -20,13 +20,6 @@ var yAxis = d3.svg.axis()
 
 var color = d3.scale.category10();
 
-function reloadData() {
-  d3.json(dataURL, function(error, labelsAndData) {
-    cluster_points = labelsAndData.result[1].map(JSON.parse);
-    drawData();
-  });
-}
-
 function drawData() {
   d3.select("svg").remove()
   $(".palette").remove()
