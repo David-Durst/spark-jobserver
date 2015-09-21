@@ -5,6 +5,7 @@ import org.apache.spark._
 import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.feature.{StandardScaler, VectorAssembler}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.storage.StorageLevel
 
 /**
  * A Spark job example that implements the SparkJob trait and can be submitted to the job server.
@@ -26,7 +27,7 @@ object KMeansExample extends SparkJob with NamedRddSupport {
    */
   override def validate(sc: SparkContext, config: Config): SparkJobValidation = SparkJobValid
 
-  override def runJob(sc: SparkContext, config: Config): (Array[String], Array[String]) = {
+  override def runJob(sc: SparkContext, config: Config): (Array[String], Array[String], Long) = {
     //load the hadoop configuration file, since the job server doesn't seem to do it
     val sqlContext = new SQLContext(sc)
 
@@ -39,41 +40,47 @@ object KMeansExample extends SparkJob with NamedRddSupport {
       sampleAndReturn(cacheReturnDF)
     }
     else {
+      //limit forces
       val data = sqlContext.read.parquet("s3n://us-east-1.elasticmapreduce.samples/flightdata/input")
+        .limit(5E6.toInt)
       val intCols = data.dtypes.filter(_._2 == "IntegerType").map(_._1).map(data.col(_))
-      val intDF = data.select(intCols: _*)
+      val intDF = data.select(intCols: _*).repartition(50)
       //just choose some reasonable na value
-      val noNADF = intDF.na.fill(0).cache()
+      val noNADF = intDF.na.fill(0)
 
       //since kmeans needs each row to have a feature vector, must assemble all columns into a vector
       val assembler = new VectorAssembler().setInputCols(intCols.map(_.toString())).setOutputCol("Features")
-      val featuresDF = assembler.transform(noNADF))
+      val featuresDF = assembler.transform(noNADF).cache()
 
       val stdScalerObject = new StandardScaler()
       stdScalerObject.setWithMean(false)
       stdScalerObject.setWithStd(true)
       stdScalerObject.setInputCol("Features")
+      stdScalerObject.setOutputCol("ScaledFeatures")
 
       val scaler = stdScalerObject.fit(featuresDF)
 
-      val scaledData = scaler.transform(featuresDF)
+      val scaledData = scaler.transform(featuresDF).cache()
+      scaledData.foreach(_ => ())
+      featuresDF.unpersist()
 
       val kmeans = new KMeans()
       kmeans.setK(K)
       kmeans.setMaxIter(NUM_ITERATIONS)
-      kmeans.setFeaturesCol("Features")
+      kmeans.setFeaturesCol("ScaledFeatures")
       kmeans.setPredictionCol("Output")
       val dataWithPredictions = kmeans.fit(scaledData).transform(scaledData).cache()
-      namedRdds.update("kmeans", dataWithPredictions.rdd.map(Tuple1(_)))
+      namedRdds.update("kmeans", dataWithPredictions.rdd)
       sampleAndReturn(dataWithPredictions)
     }
 
 
   }
 
-  def sampleAndReturn(dataWithPredictions: DataFrame): (Array[String], Array[String]) = {
+  def sampleAndReturn(dataWithPredictions: DataFrame): (Array[String], Array[String], Long) = {
     //take 1000 points
-    val sample = dataWithPredictions.drop("Features").sample(false, 1000 / dataWithPredictions.count())
-    (sample.columns, sample.toJSON.collect())
+    val sample = dataWithPredictions.drop("Features").drop("ScaledFeatures")
+      .sample(false, 1000 / dataWithPredictions.count().toDouble)
+    (sample.columns, sample.toJSON.collect(), sample.count())
   }
 }
