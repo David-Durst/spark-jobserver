@@ -23,7 +23,6 @@ var color = d3.scale.category10();
 function drawData() {
   d3.select("svg").remove()
   $(".palette").remove()
-  data = d3.csv.parse(cluster_labels + "\n" + cluster_points);
 
   var domainByTrait = {};
   traits = getActiveLabels();
@@ -122,7 +121,7 @@ function drawData() {
       })
       .attr("r", 3)
       .style("fill", function(d) {
-        return color(d.species);
+        return color(d.Output);
       });
   }
 
@@ -144,7 +143,7 @@ function drawData() {
   function brushmove(p) {
     var e = brush.extent();
     svg.selectAll("circle").classed("hidden", function(d) {
-      return !selectedSpecies.has(d.species) ||
+      return !selectedSpecies.has(d.Output) ||
         (e[0][0] > d[p.x] || d[p.x] > e[1][0] || e[0][1] > d[p.y] || d[p.y] > e[1][1]);
     });
   }
@@ -153,7 +152,7 @@ function drawData() {
   function brushend() {
     if (brush.empty()) {
       svg.selectAll(".hidden").classed("hidden", function(d) {
-        return !selectedSpecies.has(d.species);
+        return !selectedSpecies.has(d.Output);
       });
       brushTarget = undefined;
     }
@@ -178,7 +177,7 @@ function drawData() {
 
 
   var species = d3.set(data.map(function(d) {
-    return d.species;
+    return d.Output;
   })).values();
   var selectedSpecies = d3.set(species);
 
@@ -209,7 +208,7 @@ function drawData() {
         brushmove(brushTarget);
       } else {
         svg.selectAll("circle").classed("hidden", function(d) {
-          return !selectedSpecies.has(d.species);
+          return !selectedSpecies.has(d.Output);
         });
       }
 

@@ -1,11 +1,11 @@
 var jobserverURL = window.location.href.replace(/:5080.*/, ":8090");
 var cluster_labels;
-var cluster_points;
+var data;
 var pageGraphicsDrawnYet = false;
 
 function reloadPageGraphics(labelsAndData) {
 	cluster_labels = labelsAndData[0];
-	cluster_points = labelsAndData[1].map(JSON.parse);
+	data = labelsAndData[1].map(JSON.parse);
 	if (!pageGraphicsDrawnYet) {
 		//build option list that will be converted to dropdown
        	for (var i = 0; i < cluster_labels.length; i++) {
