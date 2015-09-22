@@ -34,7 +34,7 @@ class WebApi(system: ActorSystem,
              jarManager: ActorRef,
              supervisor: ActorRef,
              jobInfo: ActorRef)
-    extends HttpService with CommonRoutes with SJSAuthenticator {
+    extends HttpService with CommonRoutes with SJSAuthenticator with CORSSupport {
   import CommonMessages._
   import ContextSupervisor._
   import scala.concurrent.duration._
@@ -55,7 +55,7 @@ class WebApi(system: ActorSystem,
 
   val logger = LoggerFactory.getLogger(getClass)
 
-  val myRoutes = respondWithHeader(RawHeader("Access-Control-Allow-Origin","*")) {
+  val myRoutes = cors {
     jarRoutes ~ contextRoutes ~ jobRoutes ~ healthzRoutes ~ otherRoutes
   }
 
