@@ -1,6 +1,6 @@
 This is a fork of [Spark Job Server](https://github.com/spark-jobserver/spark-jobserver) designed for Amazon EC2. It contains scripts which launch an EC2 cluster, deploy an appropriately configured instance of the job server, and run a sample application.
 
-## How To Use
+## Setting Up The EC2 Cluster
 
 1. Sign up for an Amazon AWS account.
 2. Assign your access key ID and secret access key to the bash variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
@@ -13,7 +13,7 @@ This is a fork of [Spark Job Server](https://github.com/spark-jobserver/spark-jo
 5. Run bin/ec2_example.sh to setup the example. Go to the url printed at the end of the script to view the example.
 4. Run bin/ec2_destroy.sh to shutdown the EC2 cluster.
 
-## The Example
+## Using The Example
 
 1. Start a Spark Context by pressing the "Start Context" button.
 2. Load data by pressing the "Resample" button. The matrix of scatterplots and category selection dropdown will only appear after loading data from the server.
