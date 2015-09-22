@@ -16,7 +16,7 @@ This is a fork of [Spark Job Server](https://github.com/spark-jobserver/spark-jo
 ## The Example
 
 1. Start a Spark Context by pressing the "Start Context" button.
-2. Load data on the server by pressing the "Resample" button.
+2. Load data by pressing the "Resample" button. The matrix of scatterplots and category selection dropdown will only appear after loading data from the server.
     * It will take approximately 30-35 minutes the first time you press resample after starting a new context. The cluster spends 20 minutes pulling data from an S3 bucket. It spends the rest of the time running the k-means clustering algorithm.
     * Subsequent presses will refresh the data in the scatterplots. These presses will take about 10 seconds as the data is reloaded from memory using a NamedRDD.
 3. After performing the data analysis, shutdown the context by pressing the "Stop Context" button.
