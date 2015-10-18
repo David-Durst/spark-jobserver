@@ -11,7 +11,7 @@ import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import spark.jobserver.util.SparkJobUtils
 import spark.jobserver.util.SSLContextFactory
-import spray.http.HttpHeaders.RawHeader
+import spark.jobserver.routes.DataRoutes
 import scala.concurrent.{Await, ExecutionContext}
 import scala.util.Try
 import spark.jobserver.io.JobInfo
@@ -28,16 +28,76 @@ import org.apache.shiro.config.IniSecurityManagerFactory
 import org.apache.shiro.mgt.SecurityManager
 import org.apache.shiro.SecurityUtils
 
+object WebApi {
+  val StatusKey = "status"
+  val ResultKey = "result"
+
+  def badRequest(ctx: RequestContext, msg: String) {
+    ctx.complete(StatusCodes.BadRequest, errMap(msg))
+  }
+
+  def notFound(ctx: RequestContext, msg: String) {
+    ctx.complete(StatusCodes.NotFound, errMap(msg))
+  }
+
+  def errMap(errMsg: String) : Map[String, String] = Map(StatusKey -> "ERROR", ResultKey -> errMsg)
+
+  def errMap(t: Throwable, status: String) : Map[String, Any] =
+    Map(StatusKey -> status, ResultKey -> formatException(t))
+
+  def getJobDurationString(info: JobInfo): String =
+    info.jobLengthMillis.map { ms => ms / 1000.0 + " secs" }.getOrElse("Job not done yet")
+
+  def resultToMap(result: Any): Map[String, Any] = result match {
+    case m: Map[_, _] => m.map { case (k, v) => (k.toString, v) }.toMap
+    case s: Seq[_]    => s.zipWithIndex.map { case (item, idx) => (idx.toString, item) }.toMap
+    case a: Array[_]  => a.toSeq.zipWithIndex.map { case (item, idx) => (idx.toString, item) }.toMap
+    case item         => Map(ResultKey -> item)
+  }
+
+  def resultToTable(result: Any): Map[String, Any] = {
+    Map(ResultKey -> result)
+  }
+
+  def formatException(t: Throwable): Any =
+    if (t.getCause != null) {
+      Map("message" -> t.getMessage,
+        "errorClass" -> t.getClass.getName,
+        "cause" -> t.getCause.getMessage,
+        "causingClass" -> t.getCause.getClass.getName,
+        "stack" -> t.getCause.getStackTrace.map(_.toString).toSeq)
+    } else {
+      Map("message" -> t.getMessage,
+        "errorClass" -> t.getClass.getName,
+        "stack" -> t.getStackTrace.map(_.toString).toSeq)
+    }
+
+  def getJobReport(jobInfo: JobInfo): Map[String, Any] = {
+    Map("jobId" -> jobInfo.jobId,
+      "startTime" -> jobInfo.startTime.toString(),
+      "classPath" -> jobInfo.classPath,
+      "context" -> (if (jobInfo.contextName.isEmpty) "<<ad-hoc>>" else jobInfo.contextName),
+      "duration" -> getJobDurationString(jobInfo)) ++ (jobInfo match {
+        case JobInfo(_, _, _, _, _, None, _) => Map(StatusKey -> "RUNNING")
+        case JobInfo(_, _, _, _, _, _, Some(ex)) => Map(StatusKey -> "ERROR",
+          ResultKey -> formatException(ex))
+        case JobInfo(_, _, _, _, _, Some(e), None) => Map(StatusKey -> "FINISHED")
+      })
+  }
+}
+
 class WebApi(system: ActorSystem,
              config: Config,
              port: Int,
              jarManager: ActorRef,
+             dataManager: ActorRef,
              supervisor: ActorRef,
              jobInfo: ActorRef)
-    extends HttpService with CommonRoutes with SJSAuthenticator with CORSSupport {
+    extends HttpService with CommonRoutes with DataRoutes with SJSAuthenticator with CORSSupport{
   import CommonMessages._
   import ContextSupervisor._
   import scala.concurrent.duration._
+  import WebApi._
 
   // Get spray-json type classes for serializing Map[String, Any]
   import ooyala.common.akka.web.JsonUtils._
@@ -56,7 +116,8 @@ class WebApi(system: ActorSystem,
   val logger = LoggerFactory.getLogger(getClass)
 
   val myRoutes = cors {
-    jarRoutes ~ contextRoutes ~ jobRoutes ~ healthzRoutes ~ otherRoutes
+    jarRoutes ~ contextRoutes ~ jobRoutes ~
+      dataRoutes ~ healthzRoutes ~ otherRoutes
   }
 
   lazy val authenticator: AuthMagnet[AuthInfo] = {
@@ -138,6 +199,21 @@ class WebApi(system: ActorSystem,
             }
           }
         }
+    }
+  }
+
+  /**
+   * Routes for listing, deletion of and storing data files
+   *    GET /data                     - lists all currently stored files
+   *    DELETE /data/<filename>       - deletes given file, no-op if file does not exist
+   *    POST /data/<filename-prefix>  - upload a new data file, using the given prefix,
+   *                                      a time stamp is appended to ensure uniqueness
+   * @author TimMaltGermany
+   */
+  def dataRoutes: Route = pathPrefix("data") {
+    // user authentication
+    authenticate(authenticator) { authInfo =>
+      dataRoutes(dataManager)
     }
   }
 
@@ -260,21 +336,25 @@ class WebApi(system: ActorSystem,
           }
         }
       } ~
-        // GET /jobs/<jobId>  returns the result in JSON form in a table
-        //  JSON result always starts with: {"status": "ERROR" / "OK" / "RUNNING"}
+        // GET /jobs/<jobId>
+        // Returns job information in JSON.
         // If the job isn't finished yet, then {"status": "RUNNING" | "ERROR"} is returned.
+        // Returned JSON contains result attribute if status is "FINISHED"
         (get & path(Segment)) { jobId =>
-          val future = jobInfo ? GetJobResult(jobId)
+          val statusFuture = jobInfo ? GetJobStatus(jobId)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            future.map {
+            statusFuture.map {
               case NoSuchJobId =>
                 notFound(ctx, "No such job ID " + jobId.toString)
-              case JobInfo(_, _, _, _, _, None, _) =>
-                ctx.complete(Map(StatusKey -> "RUNNING"))
-              case JobInfo(_, _, _, _, _, _, Some(ex)) =>
-                ctx.complete(Map(StatusKey -> "ERROR", "ERROR" -> formatException(ex)))
-              case JobResult(_, result) =>
-                ctx.complete(resultToTable(result))
+              case info: JobInfo =>
+                val jobReport = getJobReport(info)
+                val resultFuture = jobInfo ? GetJobResult(jobId)
+                resultFuture.map {
+                  case JobResult(_, result) =>
+                    ctx.complete(jobReport ++ resultToTable(result))
+                  case _ =>
+                    ctx.complete(jobReport)
+                }
             }
           }
         } ~
@@ -282,7 +362,7 @@ class WebApi(system: ActorSystem,
         //  Stop the current job. All other jobs submited with this spark context
         //  will continue to run
         (delete & path(Segment)) { jobId =>
-          val future = jobInfo ? GetJobResult(jobId)
+          val future = jobInfo ? GetJobStatus(jobId)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             future.map {
               case NoSuchJobId =>
@@ -293,8 +373,8 @@ class WebApi(system: ActorSystem,
                 ctx.complete(Map(StatusKey -> "KILLED"))
               case JobInfo(_, _, _, _, _, _, Some(ex)) =>
                 ctx.complete(Map(StatusKey -> "ERROR", "ERROR" -> formatException(ex)))
-              case JobResult(_, result) =>
-                ctx.complete(resultToTable(result))
+              case JobInfo(_, _, _, _, _, Some(e), None) =>
+                notFound(ctx, "No running job with ID " + jobId.toString)
             }
           }
         } ~
@@ -312,16 +392,7 @@ class WebApi(system: ActorSystem,
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
               future.map { infos =>
                 val jobReport = infos.map { info =>
-                  Map("jobId" -> info.jobId,
-                    "startTime" -> info.startTime.toString(),
-                    "classPath" -> info.classPath,
-                    "context" -> (if (info.contextName.isEmpty) "<<ad-hoc>>" else info.contextName),
-                    "duration" -> getJobDurationString(info)) ++ (info match {
-                      case JobInfo(_, _, _, _, _, None, _) => Map(StatusKey -> "RUNNING")
-                      case JobInfo(_, _, _, _, _, _, Some(ex)) => Map(StatusKey -> "ERROR",
-                        ResultKey -> formatException(ex))
-                      case JobInfo(_, _, _, _, _, Some(e), None) => Map(StatusKey -> "FINISHED")
-                    })
+                  getJobReport(info)
                 }
                 ctx.complete(jobReport)
               }
@@ -402,44 +473,6 @@ class WebApi(system: ActorSystem,
 
   override def timeoutRoute: Route =
     complete(500, errMap("Request timed out. Try using the /jobs/<jobID>, /jobs APIs to get status/results"))
-
-  private def badRequest(ctx: RequestContext, msg: String) =
-    ctx.complete(StatusCodes.BadRequest, errMap(msg))
-
-  private def notFound(ctx: RequestContext, msg: String) =
-    ctx.complete(StatusCodes.NotFound, errMap(msg))
-
-  private def errMap(errMsg: String) = Map(StatusKey -> "ERROR", ResultKey -> errMsg)
-
-  private def errMap(t: Throwable, status: String) =
-    Map(StatusKey -> status, ResultKey -> formatException(t))
-
-  private def getJobDurationString(info: JobInfo): String =
-    info.jobLengthMillis.map { ms => ms / 1000.0 + " secs" }.getOrElse("Job not done yet")
-
-  def resultToMap(result: Any): Map[String, Any] = result match {
-    case m: Map[_, _] => m.map { case (k, v) => (k.toString, v) }.toMap
-    case s: Seq[_]    => s.zipWithIndex.map { case (item, idx) => (idx.toString, item) }.toMap
-    case a: Array[_]  => a.toSeq.zipWithIndex.map { case (item, idx) => (idx.toString, item) }.toMap
-    case item         => Map(ResultKey -> item)
-  }
-
-  def resultToTable(result: Any): Map[String, Any] = {
-    Map(StatusKey -> "OK", ResultKey -> result)
-  }
-
-  def formatException(t: Throwable): Any =
-    if (t.getCause != null) {
-      Map("message" -> t.getMessage,
-          "errorClass" -> t.getClass.getName,
-          "cause" ->   t.getCause.getMessage,
-          "causingClass" -> t.getCause.getClass.getName,
-          "stack" -> t.getCause.getStackTrace.map(_.toString).toSeq)
-    } else {
-      Map("message" -> t.getMessage,
-          "errorClass" -> t.getClass.getName,
-          "stack" -> t.getStackTrace.map(_.toString).toSeq)
-    }
 
   private def getJobManagerForContext(context: Option[String],
                                       contextConfig: Config,

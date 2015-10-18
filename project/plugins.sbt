@@ -1,4 +1,4 @@
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.4")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.5")
 
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.7.2")       // For quick restarts for web development
 
@@ -10,7 +10,7 @@ addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.6.0")
 
 resolvers += Classpaths.sbtPluginReleases
 
-addSbtPlugin("org.scoverage" %% "sbt-scoverage" % "1.0.4")
+addSbtPlugin("org.scoverage" %% "sbt-scoverage" % "1.2.0")
 
 addSbtPlugin("me.lessis" % "bintray-sbt" % "0.2.1")
 
